@@ -1,0 +1,23 @@
+{
+    "name": "prowebcraft/yii2-lazy-cache",
+    "description": "Lazy cache functions",
+    "keywords": ["yii2", "helper", "lazy", "cache"],
+    "homepage": "https://github.com/prowebcraft/yii2-lazy-cache",
+    "type": "yii2-extension",
+    "license": "BSD-4-Clause",
+    "authors": [
+        {
+            "name": "Andrey Mistulov",
+            "email": "prowebcraft@gmail.com",
+            "homepage": "http://prowebcraft.ru"
+        }
+    ],
+    "require": {
+        "php": ">=8.0.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "prowebcraft\\yii2lazycache\\": "src/"
+        }
+    }
+}
