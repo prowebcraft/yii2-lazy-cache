@@ -5,20 +5,20 @@
 
 namespace prowebcraft\yii2lazycache;
 
+use yii\caching\TagDependency;
+
 trait Lazy
 {
 
     /**
      * Local cache field
      * @see lazyField
-     * @see getAllLazyFields
-     * @see getCountLazyFields
      * @var array
      */
     private array $lazyCache = [];
 
     /**
-     * Provide local/cache storage for multiple data access requests
+     * Provide local/cache storage for multiple data access between requests
      * @param array|string $key
      * Unique cache key
      * @param callable $getValueCallback
@@ -31,20 +31,21 @@ trait Lazy
      * - session - variable, stored in user session
      * @param int $ttl
      * TTL in seconds (valid only for cache and session storage), one day by default
-     * @param array $tags
+     * @param array|string $tags
      * Tags for invalidating cache
      * @param bool $catch
      * catch exceptions inside callback
      * @return mixed
+     * @throws \Throwable
      */
     protected function lazy(
         array|string $key,
         callable     $getValueCallback,
         string       $storage = 'registry',
         int          $ttl = 86400,
-        array        $tags = [],
+        array|string        $tags = [],
         bool         $catch = true
-    )
+    ): mixed
     {
         $cacheKey = $this->getLazyCacheKey($key);
         if (!isset($this->lazyCache[$cacheKey])) {
@@ -64,14 +65,15 @@ trait Lazy
                     if (($this->lazyCache[$cacheKey] = $cache->get($cacheKey)) === null) {
                         $result = $getValueCallback();
                         $this->lazyCache[$cacheKey] = $result;
+                        $dep = null;
                         if ($tags) {
-                            // todo tags dependency
+                            $dep = new TagDependency(['tags' => $tags]);
                         }
-                        $cache->set($cacheKey, $this->lazyCache[$cacheKey], $ttl);
+                        $cache->set($cacheKey, $this->lazyCache[$cacheKey], $ttl, $dep);
                     }
                 } catch (\Throwable $e) {
                     if ($catch) {
-                        //todo log error
+                        \Yii::error('Error during lazy cache function execution: ' . $e->getMessage(), 'lazy');
                     } else {
                         throw $e;
                     }
@@ -95,21 +97,50 @@ trait Lazy
     }
 
     /**
-     * Provide cache storage for multiple data access requests
+     * Invalidate cache by tags
+     * @param string|array $tag
+     * @return void
+     */
+    public function invalidateByTag(string|array $tag): void
+    {
+        TagDependency::invalidate(\Yii::$app->cache, $tag);
+    }
+
+    /**
+     * Provide cache storage for multiple data access between requests
      * @param string|array $key
      * Unique cache key
      * @param callable $getValueCallback
      * Callback, providing data if no cache available
      * @param int $ttl
      * TTL in seconds (valid only for cache and session storage), one day by default
-     * @param array|string $tags
+     * @param array $tags
      * Tags for invalidating cache
      * @param bool $catch
      * @return mixed
+     * @throws \Throwable
      */
-    protected function lazyWithCache(string|array $key, callable $getValueCallback, int $ttl = 86400, $tags = [], $catch = true)
+    protected function lazyWithCache(
+        string|array $key,
+        callable $getValueCallback,
+        int $ttl = 86400,
+        array|string $tags = [],
+        bool $catch = true
+    ): mixed
     {
         return $this->lazy($key, $getValueCallback, 'cache', $ttl, $tags, $catch);
+    }
+
+    /**
+     * Provide session storage for multiple data access between requests
+     * @param string|array $key
+     * @param callable $getValueCallback
+     * @return mixed
+     * @throws \Throwable
+     */
+    protected function lazyInSession(string|array $key, callable $getValueCallback): mixed
+    {
+        return $this->lazy($key, $getValueCallback, 'session');
     }
 
     /**
@@ -119,28 +150,11 @@ trait Lazy
      * @param callable $getValueCallback
      * Callback, providing data if no cache available
      * @return mixed
+     * @throws \Throwable
      */
     public function lazyField(array|string $key, callable $getValueCallback): mixed
     {
         return $this->lazy($key, $getValueCallback, 'local');
-    }
-
-    /**
-     * Возвращает ассоциативный массив с данными установленными во внутреннем кеше класса
-     * @return array
-     */
-    public function getAllLazyFields(): array
-    {
-        return $this->lazyCache;
-    }
-
-    /**
-     * Возвращает количество элементов во внутреннем кеше класса
-     * @return int
-     */
-    public function getCountLazyFields(): int
-    {
-        return count($this->lazyCache);
     }
 
     /**
@@ -169,10 +183,11 @@ trait Lazy
     }
 
     /**
-     * @param $key
+     * Stringify key
+     * @param array|string $key
      * @return string
      */
-    protected function getLazyCacheKey($key): string
+    protected function getLazyCacheKey(array|string $key): string
     {
         if (is_array($key)) {
             $key = array_map(function ($item) {
