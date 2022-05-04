@@ -172,10 +172,10 @@ trait Lazy
                 Registry::unset($cacheKey);
                 break;
             case 'cache':
-                //todo yii2 cache logic
+                \Yii::$app->cache->delete($cacheKey);
                 break;
             case 'session':
-                //todo yii2 session cache logic
+                \Yii::$app->session?->remove($cacheKey);
                 break;
         }
 
