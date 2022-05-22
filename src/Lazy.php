@@ -271,9 +271,9 @@ trait Lazy
      * Clear cache
      * @param array|string $key
      * @param string $type
-     * @return $this
+     * @return void
      */
-    protected static function clearLazyStatic(array|string $key, string $type = 'local'): void
+    protected static function clearLazyStatic(array|string $key, string $type = 'cache'): void
     {
         $cacheKey = static::getLazyCacheKey($key);
         unset(static::$staticLazyCache[$cacheKey]);
