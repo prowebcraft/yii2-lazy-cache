@@ -260,7 +260,7 @@ trait Lazy
      * @param array|string $key
      * @param string $type
      */
-    protected function clearLazy(array|string $key, string $type = 'local'): void
+    protected function clearLazy(array|string $key, string $type = 'cache'): void
     {
         $cacheKey = static::getLazyCacheKey($key);
         unset($this->lazyCache[$cacheKey]);
